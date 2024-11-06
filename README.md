@@ -5,7 +5,7 @@ Use ChatGPT or any LLM to generate Blender script to create 3D scenes.
 Use Blender from command line to generate the GLB file.
 Use threejs to rendr the glb file in the browser.
 
-The full article is available at [3Promot To Pixels- Analogarithm](https://analogarithm.com/from-prompt-to-pixels-creating-blender-animations-with-ai-in-minutes-5e262b17c799)
+The full article is available at [Prompt To Pixels- Analogarithm](https://analogarithm.com/from-prompt-to-pixels-creating-blender-animations-with-ai-in-minutes-5e262b17c799)
 
 ## The screenshot 
 ![3DGPT]( screenshot.jpeg)
