@@ -10,6 +10,9 @@ The full article is available at [Prompt To Pixels- Analogarithm](https://analog
 ## The screenshot 
 ![3DGPT]( screenshot.jpeg)
 
+## Live Demo
+[3DGPT](https://3dgpt-ten.vercel.app/)
+
 ## Generate GLB file, from the shell
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender -b -P script.py
