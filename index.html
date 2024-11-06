@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced GLB Viewer</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Three.js library from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GLTF Loader from Three.js examples (for loading .glb files) -->
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- OrbitControls from Three.js examples -->
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Orbit controls setup
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.maxDistance = 20;
+        controls.minDistance = 2;
+
+        // Load the GLB model with animations
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            'output_scene.glb', // Replace with the path to your .glb file
+            function (gltf) {
+                scene.add(gltf.scene);
+
+                // Play animations if present
+                const mixer = new THREE.AnimationMixer(gltf.scene);
+                gltf.animations.forEach(animation => {
+                    mixer.clipAction(animation).play();
+                });
+
+                // Store the mixer to update it on each frame
+                scene.userData.mixer = mixer;
+
+                animate(); // Start animation once model is loaded
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.error('An error happened', error);
+            }
+        );
+
+        // Ambient Light (Soft, overall light)
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Soft white light
+        scene.add(ambientLight);
+
+        // Directional Light (Mimics sunlight)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7.5).normalize();
+        scene.add(directionalLight);
+
+        // Point Light (Adds a soft point source)
+        const pointLight = new THREE.PointLight(0xffccaa, 1.5, 50); // Soft, warm light
+        pointLight.position.set(2, 2, 5); // Position it slightly above the scene
+        scene.add(pointLight);
+
+        // Spotlight (Creates highlights and shadows)
+        const spotLight = new THREE.SpotLight(0xffffff, 1.2);
+        spotLight.position.set(-5, 5, 5);
+        spotLight.angle = Math.PI / 8;
+        spotLight.penumbra = 0.3; // Adds a bit of softness
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+
+        // Position the camera
+        camera.position.z = 5;
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update the animation mixer
+            const delta = clock.getDelta();
+            if (scene.userData.mixer) scene.userData.mixer.update(delta);
+
+            controls.update(); // Update controls on each frame
+            renderer.render(scene, camera);
+        }
+
+        // Clock for animation mixer timing
+        const clock = new THREE.Clock();
+    </script>
+</body>
+
+</html>

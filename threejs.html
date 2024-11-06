@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Neural Network Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Include Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include OrbitControls for camera interaction -->
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Initialize the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Set up OrbitControls for interactive camera movement
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.maxDistance = 20;
+        controls.minDistance = 2;
+
+        // Set up lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7.5);
+        scene.add(directionalLight);
+
+        // Set initial camera position
+        camera.position.set(5, -10, 5);
+        controls.update();
+
+        // Parameters for grid and animation
+        const inputSize = 32;
+        const outputSize = 10;
+        const cubeSize = 0.1;
+        const inputStart = { x: -2, y: -1, z: -1 };
+        const outputStart = { x: 4, y: 0, z: 0 };
+        const highlightIndex = 2;
+        const connections = [];
+        const spheres = [];
+
+        // Create the 32x32 Input Layer (3D layout)
+        const inputNodes = [];
+        for (let i = 0; i < inputSize; i += 4) {
+            for (let j = 0; j < inputSize; j += 4) {
+                const cube = new THREE.Mesh(
+                    new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
+                    new THREE.MeshStandardMaterial({ color: 0x888888 })
+                );
+                cube.position.set(
+                    inputStart.x,
+                    inputStart.y + i * cubeSize * 1.5,
+                    inputStart.z + j * cubeSize * 1.5
+                );
+                scene.add(cube);
+                inputNodes.push(cube);
+            }
+        }
+
+        // Create the 1x10 Output Layer (Aligned horizontally)
+        const outputNodes = [];
+        for (let i = 0; i < outputSize; i++) {
+            const color = i === highlightIndex ? 0xff0000 : 0x888888;
+            const cube = new THREE.Mesh(
+                new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize),
+                new THREE.MeshStandardMaterial({ color })
+            );
+            cube.position.set(outputStart.x, outputStart.y + i * cubeSize * 2, outputStart.z);
+            scene.add(cube);
+            outputNodes.push(cube);
+        }
+
+        // Calculate the center of all objects in the scene
+        const center = new THREE.Vector3();
+        const allObjects = [...inputNodes, ...outputNodes];
+        allObjects.forEach(object => center.add(object.position));
+        center.divideScalar(allObjects.length);  // Average position to get the center
+
+        // Set the orbit controls target to the calculated center
+        controls.target.copy(center);
+        controls.update();
+
+        // Create connections between input and output nodes
+        inputNodes.forEach(inputNode => {
+            outputNodes.forEach(outputNode => {
+                const curve = new THREE.CatmullRomCurve3([inputNode.position, outputNode.position]);
+                const points = curve.getPoints(50);
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({ color: 0x333333 });
+                const line = new THREE.Line(geometry, material);
+                scene.add(line);
+                connections.push({ start: inputNode.position, end: outputNode.position });
+            });
+        });
+
+        // Function to create an animated sphere
+        function createSignal(start, end, delay) {
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.05, 16, 16),
+                new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+            );
+            sphere.position.copy(start);
+            scene.add(sphere);
+            spheres.push({ mesh: sphere, start, end, delay, progress: 0 });
+        }
+
+        // Generate multiple signals at intervals
+        let frame = 0;
+        function generateSignals() {
+            if (frame % 10 === 0) {  // Adjust frequency
+                for (let i = 0; i < 5; i++) {  // Generate 5 signals at a time
+                    const { start, end } = connections[Math.floor(Math.random() * connections.length)];
+                    createSignal(start, end, Math.random() * 0.5);
+                }
+            }
+            frame++;
+        }
+
+        // Animate signals along connections
+        function animateSignals(delta) {
+            spheres.forEach((sphereData, index) => {
+                if (sphereData.progress >= 1) {
+                    scene.remove(sphereData.mesh);  // Remove the sphere once it reaches the end
+                    spheres.splice(index, 1);  // Remove from array
+                } else {
+                    sphereData.progress += delta / 2;  // Control speed of animation
+                    sphereData.mesh.position.lerpVectors(sphereData.start, sphereData.end, sphereData.progress);
+                }
+            });
+        }
+
+        // Render and animate
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            const delta = clock.getDelta();
+            generateSignals();
+            animateSignals(delta);
+
+            renderer.render(scene, camera);
+        }
+
+        // Set up a clock for timing animations
+        const clock = new THREE.Clock();
+        animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+
+</html>
